@@ -423,6 +423,11 @@ def main() -> None:
         "",
     ).strip()
 
+    key_takeaways = lead.get(
+        "key_takeaways",
+        [],
+    )
+
     youtube_title = lead.get(
         "youtube_title",
         headline or "AI News",
@@ -465,6 +470,15 @@ def main() -> None:
             "Lead voiceover is empty."
         )
 
+    if not isinstance(
+        key_takeaways,
+        list,
+    ):
+
+        raise RuntimeError(
+            "Lead key_takeaways is invalid."
+        )
+
     # ========================================================
     # IMAGE
     # ========================================================
@@ -500,7 +514,7 @@ def main() -> None:
 
         hook=hook,
 
-        voiceover=voiceover,
+        key_takeaways=key_takeaways,
 
         source=lead_source,
 
@@ -579,6 +593,14 @@ def main() -> None:
         out_video=video_file,
 
         seconds=settings.short_seconds,
+
+        headline=headline,
+
+        hook=hook,
+
+        key_takeaways=key_takeaways,
+
+        source=lead_source,
     )
 
     # ========================================================
