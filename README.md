@@ -126,7 +126,7 @@ Important behavior:
 
 ## Daily automation
 
-A GitHub Actions workflow is included at `.github/workflows/daily.yml`. It runs at 11:00 IST (05:30 UTC), with a **Run workflow** button for manual testing. A web host is not needed: GitHub Actions starts a clean Ubuntu machine for each daily run, generates the Short, and uploads it to YouTube.
+A GitHub Actions workflow is included at `.github/workflows/daily.yml`. It runs daily at 9:00 AM and 6:00 PM IST (03:30 UTC and 12:30 UTC), with a **Run workflow** button for manual testing. A web host is not needed: GitHub Actions starts a clean Ubuntu machine for each daily run, generates the Short, and uploads it to YouTube.
 
 Store these GitHub Actions secrets:
 

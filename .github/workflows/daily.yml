@@ -2,8 +2,10 @@ name: Daily AI News Short
 
 on:
   schedule:
-    # 05:30 UTC = 11:00 IST
-    - cron: "30 5 * * *"
+    # GitHub Actions cron uses UTC.
+    # 03:30 UTC = 09:00 IST; 12:30 UTC = 18:00 IST.
+    - cron: "30 3 * * *"
+    - cron: "30 12 * * *"
   workflow_dispatch:
 
 concurrency:
