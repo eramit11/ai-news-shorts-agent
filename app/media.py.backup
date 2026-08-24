@@ -1,0 +1,1224 @@
+from __future__ import annotations
+
+import asyncio
+import subprocess
+from pathlib import Path
+
+import edge_tts
+
+from PIL import (
+    Image,
+    ImageDraw,
+    ImageFont,
+    ImageFilter,
+)
+
+
+# ============================================================
+# FONT CONFIGURATION
+# ============================================================
+
+FONT_DIRS = [
+    Path("/usr/share/fonts/truetype/dejavu"),
+    Path("/usr/share/fonts/truetype/liberation2"),
+]
+
+
+def find_font(
+    names: list[str],
+    size: int,
+):
+    for directory in FONT_DIRS:
+        for name in names:
+            path = directory / name
+
+            if path.exists():
+                return ImageFont.truetype(
+                    str(path),
+                    size,
+                )
+
+    return ImageFont.load_default()
+
+
+FONT_BOLD = [
+    "DejaVuSans-Bold.ttf",
+    "LiberationSans-Bold.ttf",
+]
+
+FONT_REGULAR = [
+    "DejaVuSans.ttf",
+    "LiberationSans-Regular.ttf",
+]
+
+
+# ============================================================
+# BACKGROUND THEMES
+# ============================================================
+#
+# Every Short gets a different professional gradient.
+#
+# Each theme contains:
+#
+#   name
+#   top color
+#   bottom color
+#   glow 1
+#   glow 2
+#   accent
+#
+# Colors are intentionally controlled rather than completely
+# random so the channel maintains a professional visual identity.
+# ============================================================
+
+BACKGROUND_THEMES = [
+    {
+        "name": "blue_purple",
+        "top": (8, 18, 55),
+        "bottom": (55, 25, 105),
+        "glow1": (0, 145, 255, 55),
+        "glow2": (125, 70, 255, 45),
+        "accent": (80, 195, 255),
+    },
+    {
+        "name": "cyan_teal",
+        "top": (4, 38, 52),
+        "bottom": (8, 105, 112),
+        "glow1": (0, 220, 210, 50),
+        "glow2": (0, 150, 255, 35),
+        "accent": (75, 225, 215),
+    },
+    {
+        "name": "purple_magenta",
+        "top": (38, 10, 60),
+        "bottom": (105, 20, 90),
+        "glow1": (180, 50, 255, 45),
+        "glow2": (255, 50, 150, 35),
+        "accent": (220, 110, 255),
+    },
+    {
+        "name": "orange_red",
+        "top": (58, 18, 8),
+        "bottom": (125, 35, 20),
+        "glow1": (255, 120, 20, 55),
+        "glow2": (255, 50, 30, 35),
+        "accent": (255, 165, 75),
+    },
+    {
+        "name": "deep_red",
+        "top": (50, 8, 18),
+        "bottom": (105, 18, 35),
+        "glow1": (255, 45, 70, 45),
+        "glow2": (190, 30, 90, 35),
+        "accent": (255, 105, 125),
+    },
+    {
+        "name": "charcoal_slate",
+        "top": (10, 15, 22),
+        "bottom": (48, 58, 70),
+        "glow1": (100, 160, 200, 35),
+        "glow2": (150, 120, 255, 25),
+        "accent": (150, 205, 235),
+    },
+    {
+        "name": "navy_cyan",
+        "top": (6, 20, 48),
+        "bottom": (15, 75, 125),
+        "glow1": (20, 170, 255, 50),
+        "glow2": (40, 90, 255, 35),
+        "accent": (80, 205, 255),
+    },
+    {
+        "name": "gold_dark",
+        "top": (45, 34, 6),
+        "bottom": (105, 82, 12),
+        "glow1": (255, 190, 40, 45),
+        "glow2": (255, 120, 20, 30),
+        "accent": (255, 205, 85),
+    },
+    {
+        "name": "green_tech",
+        "top": (5, 35, 22),
+        "bottom": (12, 95, 58),
+        "glow1": (40, 255, 150, 45),
+        "glow2": (20, 180, 120, 35),
+        "accent": (80, 235, 150),
+    },
+    {
+        "name": "indigo",
+        "top": (15, 12, 55),
+        "bottom": (40, 40, 125),
+        "glow1": (80, 90, 255, 50),
+        "glow2": (150, 80, 255, 35),
+        "accent": (130, 155, 255),
+    },
+]
+
+
+def get_background_theme(
+    out_file: Path,
+) -> dict:
+    """
+    Select a background theme while avoiding the immediately
+    previous theme.
+
+    The last selected theme is stored inside the output directory:
+
+        output/.last_background_theme
+
+    This means separate executions of:
+
+        python -m app.main
+
+    will not immediately reuse the same background.
+    """
+
+    output_root = out_file.parent.parent
+
+    state_file = output_root / ".last_background_theme"
+
+    previous_index = None
+
+    try:
+        if state_file.exists():
+            value = state_file.read_text(
+                encoding="utf-8"
+            ).strip()
+
+            if value:
+                previous_index = int(value)
+
+    except Exception:
+        previous_index = None
+
+    available_indices = list(
+        range(len(BACKGROUND_THEMES))
+    )
+
+    if (
+        previous_index is not None
+        and 0 <= previous_index < len(BACKGROUND_THEMES)
+        and len(available_indices) > 1
+    ):
+        available_indices.remove(
+            previous_index
+        )
+
+    # Use nanosecond time to vary the selection
+    # between independent executions.
+    import time
+
+    index = (
+        time.time_ns()
+        % len(available_indices)
+    )
+
+    selected_index = available_indices[index]
+
+    try:
+        state_file.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        state_file.write_text(
+            str(selected_index),
+            encoding="utf-8",
+        )
+
+    except Exception:
+        pass
+
+    return BACKGROUND_THEMES[
+        selected_index
+    ]
+
+
+# ============================================================
+# TEXT WRAPPING
+# ============================================================
+
+
+def wrap_text(
+    draw,
+    text: str,
+    font,
+    max_width: int,
+):
+    words = text.split()
+
+    if not words:
+        return []
+
+    lines = []
+
+    current = ""
+
+    for word in words:
+        test = (
+            word
+            if not current
+            else current + " " + word
+        )
+
+        bbox = draw.textbbox(
+            (0, 0),
+            test,
+            font=font,
+        )
+
+        width = (
+            bbox[2] - bbox[0]
+        )
+
+        if width <= max_width:
+            current = test
+
+        else:
+            if current:
+                lines.append(
+                    current
+                )
+
+            current = word
+
+    if current:
+        lines.append(
+            current
+        )
+
+    return lines
+
+
+def draw_wrapped(
+    draw,
+    text: str,
+    x: int,
+    y: int,
+    font,
+    fill,
+    max_width: int,
+    line_spacing: int = 12,
+):
+    lines = wrap_text(
+        draw,
+        text,
+        font,
+        max_width,
+    )
+
+    bbox = font.getbbox(
+        "Ag"
+    )
+
+    line_height = (
+        bbox[3]
+        - bbox[1]
+        + line_spacing
+    )
+
+    for line in lines:
+        draw.text(
+            (x, y),
+            line,
+            font=font,
+            fill=fill,
+        )
+
+        y += line_height
+
+    return y
+
+
+# ============================================================
+# TEXT-BASED NEWS GRAPHIC
+# ============================================================
+
+
+def generate_image(
+    prompt: str = "",
+    out_file: Path | None = None,
+    headline: str | None = None,
+    hook: str | None = None,
+    key_takeaways: list[str] | None = None,
+    source: str | None = None,
+    visual_style: str = "modern-news",
+) -> Path:
+
+    """
+    Generate a professional 1080x1920 text-based AI news
+    graphic.
+
+    IMPORTANT:
+    This does NOT use an AI image generator.
+
+    Pillow creates the graphic, which means:
+
+    - exact text
+    - sharp typography
+    - no hallucinated image text
+    - consistent branding
+    - mobile-friendly layout
+    - different gradient background on each run
+    """
+
+    if out_file is None:
+        raise RuntimeError(
+            "out_file is required."
+        )
+
+    out_file = Path(
+        out_file
+    )
+
+    out_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    print(
+        "Generating text-based 9:16 AI news graphic...",
+        flush=True,
+    )
+
+    # --------------------------------------------------------
+    # Defaults
+    # --------------------------------------------------------
+
+    headline = (
+        headline
+        or "Latest AI News"
+    )
+
+    hook = (
+        hook
+        or "The latest development in artificial intelligence."
+    )
+
+    source = (
+        source
+        or "AI News"
+    )
+
+    # --------------------------------------------------------
+    # Canvas
+    # --------------------------------------------------------
+
+    WIDTH = 1080
+    HEIGHT = 1920
+
+    # --------------------------------------------------------
+    # Select NEW background theme
+    # --------------------------------------------------------
+
+    theme = get_background_theme(
+        out_file
+    )
+
+    top = theme["top"]
+    bottom = theme["bottom"]
+    accent = theme["accent"]
+
+    # --------------------------------------------------------
+    # Base image
+    # --------------------------------------------------------
+
+    image = Image.new(
+        "RGB",
+        (
+            WIDTH,
+            HEIGHT,
+        ),
+        top,
+    )
+
+    draw = ImageDraw.Draw(
+        image
+    )
+
+    # --------------------------------------------------------
+    # Gradient background
+    # --------------------------------------------------------
+
+    for y in range(
+        HEIGHT
+    ):
+        ratio = (
+            y / max(
+                HEIGHT - 1,
+                1,
+            )
+        )
+
+        r = int(
+            top[0]
+            + (
+                bottom[0]
+                - top[0]
+            )
+            * ratio
+        )
+
+        g = int(
+            top[1]
+            + (
+                bottom[1]
+                - top[1]
+            )
+            * ratio
+        )
+
+        b = int(
+            top[2]
+            + (
+                bottom[2]
+                - top[2]
+            )
+            * ratio
+        )
+
+        draw.line(
+            [
+                (0, y),
+                (WIDTH, y),
+            ],
+            fill=(
+                r,
+                g,
+                b,
+            ),
+        )
+
+    # --------------------------------------------------------
+    # Background glow
+    # --------------------------------------------------------
+
+    glow = Image.new(
+        "RGBA",
+        (
+            WIDTH,
+            HEIGHT,
+        ),
+        (
+            0,
+            0,
+            0,
+            0,
+        ),
+    )
+
+    glow_draw = ImageDraw.Draw(
+        glow
+    )
+
+    glow_draw.ellipse(
+        (
+            -300,
+            100,
+            700,
+            1000,
+        ),
+        fill=theme["glow1"],
+    )
+
+    glow_draw.ellipse(
+        (
+            400,
+            1150,
+            1350,
+            2050,
+        ),
+        fill=theme["glow2"],
+    )
+
+    glow = glow.filter(
+        ImageFilter.GaussianBlur(
+            120
+        )
+    )
+
+    image = Image.alpha_composite(
+        image.convert(
+            "RGBA"
+        ),
+        glow,
+    )
+
+    draw = ImageDraw.Draw(
+        image
+    )
+
+    # --------------------------------------------------------
+    # Fonts
+    # --------------------------------------------------------
+
+    font_brand = find_font(
+        FONT_BOLD,
+        46,
+    )
+
+    font_label = find_font(
+        FONT_BOLD,
+        32,
+    )
+
+    font_headline = find_font(
+        FONT_BOLD,
+        76,
+    )
+
+    font_hook = find_font(
+        FONT_BOLD,
+        42,
+    )
+
+    font_body = find_font(
+        FONT_REGULAR,
+        34,
+    )
+
+    font_source = find_font(
+        FONT_REGULAR,
+        28,
+    )
+
+    font_footer = find_font(
+        FONT_BOLD,
+        28,
+    )
+
+    margin = 70
+
+    content_width = (
+        WIDTH
+        - margin * 2
+    )
+
+    # ========================================================
+    # BRAND HEADER
+    # ========================================================
+
+    badge_x = margin
+    badge_y = 65
+
+    draw.rounded_rectangle(
+        (
+            badge_x,
+            badge_y,
+            badge_x + 290,
+            badge_y + 72,
+        ),
+        radius=36,
+        fill=(
+            accent[0],
+            accent[1],
+            accent[2],
+            255,
+        ),
+    )
+
+    draw.text(
+        (
+            badge_x + 25,
+            badge_y + 14,
+        ),
+        "AI NEWS",
+        font=font_brand,
+        fill=(
+            255,
+            255,
+            255,
+        ),
+    )
+
+    draw.text(
+        (
+            WIDTH - 285,
+            87,
+        ),
+        "DAILY UPDATE",
+        font=font_source,
+        fill=(
+            205,
+            215,
+            230,
+        ),
+    )
+
+    # ========================================================
+    # SEPARATOR
+    # ========================================================
+
+    draw.rounded_rectangle(
+        (
+            margin,
+            180,
+            WIDTH - margin,
+            188,
+        ),
+        radius=4,
+        fill=(
+            accent[0],
+            accent[1],
+            accent[2],
+        ),
+    )
+
+    # ========================================================
+    # BREAKING LABEL
+    # ========================================================
+
+    y = 245
+
+    draw.text(
+        (
+            margin,
+            y,
+        ),
+        "BREAKING",
+        font=font_label,
+        fill=(
+            accent[0],
+            accent[1],
+            accent[2],
+        ),
+    )
+
+    y += 70
+
+    # ========================================================
+    # HEADLINE
+    # ========================================================
+
+    y = draw_wrapped(
+        draw,
+        headline,
+        margin,
+        y,
+        font_headline,
+        (
+            255,
+            255,
+            255,
+        ),
+        content_width,
+        line_spacing=14,
+    )
+
+    # ========================================================
+    # WHY THIS MATTERS CARD
+    # ========================================================
+
+    card_top = y + 45
+
+    hook_lines = wrap_text(
+        draw,
+        hook,
+        font_hook,
+        content_width - 70,
+    )
+
+    hook_line_height = 58
+
+    card_height = max(
+        155,
+        80
+        + len(hook_lines)
+        * hook_line_height,
+    )
+
+    # Slightly transparent dark card works across
+    # every background theme.
+    draw.rounded_rectangle(
+        (
+            margin,
+            card_top,
+            WIDTH - margin,
+            card_top + card_height,
+        ),
+        radius=28,
+        fill=(
+            12,
+            20,
+            35,
+            235,
+        ),
+        outline=(
+            accent[0],
+            accent[1],
+            accent[2],
+            255,
+        ),
+        width=3,
+    )
+
+    draw.text(
+        (
+            margin + 30,
+            card_top + 22,
+        ),
+        "WHY THIS MATTERS",
+        font=font_label,
+        fill=(
+            accent[0],
+            accent[1],
+            accent[2],
+        ),
+    )
+
+    hook_y = (
+        card_top
+        + 72
+    )
+
+    for line in hook_lines:
+        draw.text(
+            (
+                margin + 30,
+                hook_y,
+            ),
+            line,
+            font=font_hook,
+            fill=(
+                245,
+                248,
+                255,
+            ),
+        )
+
+        hook_y += (
+            hook_line_height
+        )
+
+    # ========================================================
+    # KEY TAKEAWAYS
+    # ========================================================
+
+    facts_top = (
+        card_top
+        + card_height
+        + 55
+    )
+
+    draw.text(
+        (
+            margin,
+            facts_top,
+        ),
+        "KEY TAKEAWAYS",
+        font=font_label,
+        fill=(
+            accent[0],
+            accent[1],
+            accent[2],
+        ),
+    )
+
+    # --------------------------------------------------------
+    # English visual key takeaways.
+    # IMPORTANT: Never derive visual text from voiceover.
+    # Voiceover may be Hindi/Hinglish; on-screen text stays English.
+    # --------------------------------------------------------
+
+    key_takeaways = key_takeaways or []
+
+    sentences = [
+        str(item).strip()
+        for item in key_takeaways
+        if str(item).strip()
+    ]
+
+    sentences = sentences[:3]
+
+    bullet_y = (
+        facts_top
+        + 70
+    )
+
+    for sentence in sentences:
+
+        if len(sentence) > 190:
+            sentence = (
+                sentence[:187]
+                + "..."
+            )
+
+        bullet_lines = wrap_text(
+            draw,
+            sentence,
+            font_body,
+            content_width - 70,
+        )
+
+        # Bullet
+        draw.ellipse(
+            (
+                margin,
+                bullet_y + 10,
+                margin + 17,
+                bullet_y + 27,
+            ),
+            fill=(
+                accent[0],
+                accent[1],
+                accent[2],
+            ),
+        )
+
+        text_y = bullet_y
+
+        for line in bullet_lines:
+            draw.text(
+                (
+                    margin + 38,
+                    text_y,
+                ),
+                line,
+                font=font_body,
+                fill=(
+                    225,
+                    232,
+                    245,
+                ),
+            )
+
+            text_y += 48
+
+        bullet_y = (
+            text_y
+            + 25
+        )
+
+    # ========================================================
+    # SOURCE
+    # ========================================================
+
+    source_top = (
+        HEIGHT - 260
+    )
+
+    draw.rounded_rectangle(
+        (
+            margin,
+            source_top,
+            WIDTH - margin,
+            source_top + 95,
+        ),
+        radius=20,
+        fill=(
+            12,
+            20,
+            34,
+            240,
+        ),
+    )
+
+    draw.text(
+        (
+            margin + 25,
+            source_top + 28,
+        ),
+        "SOURCE",
+        font=font_label,
+        fill=(
+            accent[0],
+            accent[1],
+            accent[2],
+        ),
+    )
+
+    source_display = source
+
+    if len(source_display) > 38:
+        source_display = (
+            source_display[:35]
+            + "..."
+        )
+
+    draw.text(
+        (
+            margin + 220,
+            source_top + 31,
+        ),
+        source_display,
+        font=font_source,
+        fill=(
+            235,
+            240,
+            250,
+        ),
+    )
+
+    # ========================================================
+    # FOOTER
+    # ========================================================
+
+    footer_y = (
+        HEIGHT - 115
+    )
+
+    draw.text(
+        (
+            margin,
+            footer_y,
+        ),
+        "FOLLOW FOR DAILY AI NEWS",
+        font=font_footer,
+        fill=(
+            190,
+            205,
+            225,
+        ),
+    )
+
+    draw.text(
+        (
+            WIDTH - 265,
+            footer_y,
+        ),
+        "#AI #SHORTS",
+        font=font_footer,
+        fill=(
+            accent[0],
+            accent[1],
+            accent[2],
+        ),
+    )
+
+    # ========================================================
+    # SAVE
+    # ========================================================
+
+    image = image.convert(
+        "RGB"
+    )
+
+    image.save(
+        out_file,
+        "PNG",
+        optimize=True,
+    )
+
+    print(
+        f"Text news graphic saved: {out_file}",
+        flush=True,
+    )
+
+    print(
+        f"Background theme: {theme['name']}",
+        flush=True,
+    )
+
+    return out_file
+
+
+# ============================================================
+# EDGE TTS
+# ============================================================
+
+
+async def _generate_tts(
+    text: str,
+    output_file: Path,
+    voice: str,
+):
+    communicate = edge_tts.Communicate(
+        text=text,
+        voice=voice,
+        rate="+5%",
+    )
+
+    await communicate.save(
+        str(output_file)
+    )
+
+
+def generate_tts(
+    text: str,
+    out_file: Path,
+    voice: str = "en-US-ChristopherNeural",
+) -> Path:
+
+    print(
+        "Generating voice with Edge TTS...",
+        flush=True,
+    )
+
+    if not text:
+        raise RuntimeError(
+            "Voiceover text is empty."
+        )
+
+    out_file = Path(
+        out_file
+    )
+
+    out_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    try:
+        asyncio.run(
+            _generate_tts(
+                text,
+                out_file,
+                voice,
+            )
+        )
+
+    except Exception as exc:
+        raise RuntimeError(
+            "Edge TTS failed: "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
+
+    if not out_file.exists():
+        raise RuntimeError(
+            "TTS completed but audio file "
+            "was not created."
+        )
+
+    if out_file.stat().st_size == 0:
+        raise RuntimeError(
+            "TTS generated an empty audio file."
+        )
+
+    print(
+        f"Voice saved: {out_file}",
+        flush=True,
+    )
+
+    return out_file
+
+
+# ============================================================
+# FFMPEG SHORT
+# ============================================================
+
+
+def make_short(
+    image: Path,
+    audio: Path,
+    out_video: Path,
+    seconds: int = 24,
+) -> Path:
+
+    print(
+        "Creating 9:16 YouTube Short with FFmpeg...",
+        flush=True,
+    )
+
+    image = Path(image)
+    audio = Path(audio)
+    out_video = Path(out_video)
+
+    if not image.exists():
+        raise RuntimeError(
+            f"Image file not found: {image}"
+        )
+
+    if not audio.exists():
+        raise RuntimeError(
+            f"Audio file not found: {audio}"
+        )
+
+    out_video.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    # --------------------------------------------------------
+    # Simple and reliable FFmpeg pipeline.
+    #
+    # The PNG is already 1080x1920.
+    # --------------------------------------------------------
+
+    command = [
+        "ffmpeg",
+        "-y",
+
+        "-loop",
+        "1",
+
+        "-i",
+        str(image),
+
+        "-i",
+        str(audio),
+
+        "-vf",
+        (
+            "scale=1080:1920:"
+            "force_original_aspect_ratio=decrease,"
+            "pad=1080:1920:"
+            "(ow-iw)/2:"
+            "(oh-ih)/2,"
+            "format=yuv420p"
+        ),
+
+        "-t",
+        str(seconds),
+
+        "-r",
+        "30",
+
+        "-c:v",
+        "libx264",
+
+        "-preset",
+        "medium",
+
+        "-crf",
+        "20",
+
+        "-c:a",
+        "aac",
+
+        "-b:a",
+        "128k",
+
+        "-shortest",
+
+        "-movflags",
+        "+faststart",
+
+        str(out_video),
+    ]
+
+    try:
+        subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    except subprocess.CalledProcessError as exc:
+
+        print(
+            exc.stderr[-5000:],
+            flush=True,
+        )
+
+        raise RuntimeError(
+            "FFmpeg failed to create the Short."
+        ) from exc
+
+    if not out_video.exists():
+        raise RuntimeError(
+            "FFmpeg finished but video "
+            "was not created."
+        )
+
+    if out_video.stat().st_size == 0:
+        raise RuntimeError(
+            "FFmpeg created an empty video."
+        )
+
+    print(
+        f"Short created: {out_video}",
+        flush=True,
+    )
+
+    return out_video

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>AI Shorts Studio</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<div class="app-shell">
+
+
+    <!-- ===================================================== -->
+    <!-- HEADER -->
+    <!-- ===================================================== -->
+
+    <header class="header">
+
+        <div>
+
+            <div class="brand">
+
+                <span class="brand-icon">
+                    ✦
+                </span>
+
+                AI Shorts Studio
+
+            </div>
+
+
+            <p class="subtitle">
+                Create and manage your daily AI news Shorts
+            </p>
+
+        </div>
+
+
+        <div class="status">
+
+            <span class="status-dot"></span>
+
+            LOCAL
+
+        </div>
+
+    </header>
+
+
+
+    <!-- ===================================================== -->
+    <!-- MAIN -->
+    <!-- ===================================================== -->
+
+    <main>
+
+
+        <!-- ================================================= -->
+        <!-- NEWS TOPIC -->
+        <!-- ================================================= -->
+
+        <section class="card">
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        📰 News Topic
+                    </h2>
+
+                    <p>
+                        Choose what type of AI news you want
+                        to generate.
+                    </p>
+
+                </div>
+
+
+                <span class="step">
+                    01
+                </span>
+
+            </div>
+
+
+            <label for="topic">
+                Topic
+            </label>
+
+
+            <select id="topic">
+
+                <option value="top-ai-news">
+                    Top AI News
+                </option>
+
+                <option value="openai">
+                    OpenAI
+                </option>
+
+                <option value="gemini">
+                    Google Gemini
+                </option>
+
+                <option value="anthropic">
+                    Anthropic
+                </option>
+
+                <option value="nvidia">
+                    NVIDIA AI
+                </option>
+
+                <option value="ai-agents">
+                    AI Agents
+                </option>
+
+                <option value="robotics">
+                    AI Robotics
+                </option>
+
+                <option value="ai-business">
+                    AI Business
+                </option>
+
+                <option value="ai-research">
+                    AI Research
+                </option>
+
+                <option value="ai-tools">
+                    AI Tools
+                </option>
+
+                <option value="custom">
+                    Custom Topic
+                </option>
+
+            </select>
+
+
+            <!-- CUSTOM TOPIC -->
+
+            <div
+                id="custom-topic-container"
+                class="hidden"
+            >
+
+                <label for="custom-topic">
+                    Custom Topic
+                </label>
+
+                <input
+                    id="custom-topic"
+                    type="text"
+                    placeholder="Example: AI coding agents"
+                >
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ================================================= -->
+        <!-- VOICE & LANGUAGE -->
+        <!-- ================================================= -->
+
+        <section class="card">
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        🎙️ Voice & Language
+                    </h2>
+
+                    <p>
+                        Control how your Short sounds.
+                    </p>
+
+                </div>
+
+
+                <span class="step">
+                    02
+                </span>
+
+            </div>
+
+
+            <div class="grid">
+
+
+                <!-- ========================================= -->
+                <!-- LANGUAGE -->
+                <!-- ========================================= -->
+
+                <div>
+
+                    <label for="language">
+                        Audio Language
+                    </label>
+
+
+                    <select id="language">
+
+                        <option value="english">
+                            🇺🇸 English
+                        </option>
+
+                        <option value="hindi">
+                            🇮🇳 Hindi
+                        </option>
+
+                        <option value="hinglish">
+                            🇮🇳 Hinglish
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- ========================================= -->
+                <!-- TONE -->
+                <!-- ========================================= -->
+
+                <div>
+
+                    <label for="tone">
+                        Narration Tone
+                    </label>
+
+
+                    <select id="tone">
+
+                        <option value="natural">
+                            Natural Human
+                        </option>
+
+                        <option value="professional">
+                            Professional News
+                        </option>
+
+                        <option value="energetic">
+                            Energetic YouTuber
+                        </option>
+
+                        <option value="friendly">
+                            Friendly Explainer
+                        </option>
+
+                        <option value="breaking">
+                            Breaking News
+                        </option>
+
+                        <option value="calm">
+                            Calm & Informative
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ============================================= -->
+            <!-- VOICE -->
+            <!-- ============================================= -->
+
+            <label for="voice">
+                Voice
+            </label>
+
+
+            <select id="voice">
+
+                <!--
+                    app.js will dynamically update this list
+                    based on the selected language.
+                -->
+
+                <option value="en-US-AndrewNeural">
+                    Andrew — Warm & Confident
+                </option>
+
+            </select>
+
+        </section>
+
+
+
+        <!-- ================================================= -->
+        <!-- VIDEO SETTINGS -->
+        <!-- ================================================= -->
+
+        <section class="card">
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        🎬 Video Settings
+                    </h2>
+
+                    <p>
+                        Configure the Short format.
+                    </p>
+
+                </div>
+
+
+                <span class="step">
+                    03
+                </span>
+
+            </div>
+
+
+            <div class="grid grid-3">
+
+
+                <!-- ========================================= -->
+                <!-- STORIES -->
+                <!-- ========================================= -->
+
+                <div>
+
+                    <label for="stories">
+                        Stories
+                    </label>
+
+
+                    <select id="stories">
+
+                        <option value="1">
+                            Top 1
+                        </option>
+
+                        <option
+                            value="3"
+                            selected
+                        >
+                            Top 3
+                        </option>
+
+                        <option value="5">
+                            Top 5
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- ========================================= -->
+                <!-- DURATION -->
+                <!-- ========================================= -->
+
+                <div>
+
+                    <label for="duration">
+                        Duration
+                    </label>
+
+
+                    <select id="duration">
+
+                        <option value="20">
+                            20 seconds
+                        </option>
+
+                        <option
+                            value="24"
+                            selected
+                        >
+                            24 seconds
+                        </option>
+
+                        <option value="30">
+                            30 seconds
+                        </option>
+
+                        <option value="45">
+                            45 seconds
+                        </option>
+
+                        <option value="60">
+                            60 seconds
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- ========================================= -->
+                <!-- VISUAL -->
+                <!-- ========================================= -->
+
+                <div>
+
+                    <label for="visual">
+                        Visual Style
+                    </label>
+
+
+                    <select id="visual">
+
+                        <option value="modern-news">
+                            Modern News
+                        </option>
+
+                        <option value="breaking-news">
+                            Breaking News
+                        </option>
+
+                        <option value="minimal-tech">
+                            Minimal Tech
+                        </option>
+
+                        <option value="dark-tech">
+                            Dark Tech
+                        </option>
+
+                        <option value="clean-editorial">
+                            Clean Editorial
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ================================================= -->
+        <!-- YOUTUBE -->
+        <!-- ================================================= -->
+
+        <section class="card">
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        ▶️ YouTube
+                    </h2>
+
+                    <p>
+                        Configure upload behavior.
+                    </p>
+
+                </div>
+
+
+                <span class="step">
+                    04
+                </span>
+
+            </div>
+
+
+
+            <!-- ============================================= -->
+            <!-- UPLOAD SWITCH -->
+            <!-- ============================================= -->
+
+            <label class="switch-row">
+
+                <input
+                    id="upload"
+                    type="checkbox"
+                >
+
+                <span class="switch"></span>
+
+                <span>
+                    Upload generated Short to YouTube
+                </span>
+
+            </label>
+
+
+
+            <!-- ============================================= -->
+            <!-- PRIVACY -->
+            <!-- ============================================= -->
+
+            <div
+                id="privacy-container"
+                class="hidden"
+            >
+
+                <label for="privacy">
+                    YouTube Privacy
+                </label>
+
+
+                <select id="privacy">
+
+                    <option value="private">
+                        🔒 Private
+                    </option>
+
+                    <option value="unlisted">
+                        🔗 Unlisted
+                    </option>
+
+                    <option value="public">
+                        🌎 Public
+                    </option>
+
+                </select>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ================================================= -->
+        <!-- ACTION BUTTONS -->
+        <!-- ================================================= -->
+
+        <section class="actions">
+
+
+            <button
+                id="preview-button"
+                class="secondary-button"
+                type="button"
+            >
+
+                Preview Settings
+
+            </button>
+
+
+
+            <button
+                id="generate-button"
+                class="primary-button"
+                type="button"
+            >
+
+                🚀 Generate Short
+
+            </button>
+
+
+        </section>
+
+
+
+        <!-- ================================================= -->
+        <!-- PREVIEW -->
+        <!-- ================================================= -->
+
+        <section
+            id="preview-card"
+            class="card preview-card hidden"
+        >
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        ⚙️ Current Configuration
+                    </h2>
+
+                    <p>
+                        Current generation configuration
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="preview-content"
+                class="preview-content"
+            >
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ================================================= -->
+        <!-- MESSAGE -->
+        <!-- ================================================= -->
+
+        <div
+            id="message"
+            class="message hidden"
+        >
+
+        </div>
+
+    </main>
+
+
+
+    <!-- ===================================================== -->
+    <!-- FOOTER -->
+    <!-- ===================================================== -->
+
+    <footer>
+
+        AI Shorts Studio · Local Mode
+
+    </footer>
+
+
+</div>
+
+
+
+<!-- ========================================================= -->
+<!-- JAVASCRIPT -->
+<!-- ========================================================= -->
+
+<script
+    src="{{ url_for('static', filename='app.js') }}"
+></script>
+
+
+</body>
+
+</html>
