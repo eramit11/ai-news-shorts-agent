@@ -20,7 +20,8 @@ jobs:
     env:
       AI_PROVIDER: openrouter
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      OPENROUTER_MODEL: openai/gpt-oss-20b:free
+      # Automatically routes to a currently available free OpenRouter model.
+      OPENROUTER_MODEL: openrouter/free
       YOUTUBE_TOKEN_JSON_B64: ${{ secrets.YOUTUBE_TOKEN_JSON_B64 }}
       YOUTUBE_CLIENT_SECRET_JSON_B64: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON_B64 }}
       YOUTUBE_CLIENT_SECRET_FILE: client_secret.json

@@ -91,7 +91,7 @@ def get_settings() -> Settings:
 
     openrouter_model = os.getenv(
         "OPENROUTER_MODEL",
-        "openai/gpt-oss-20b:free",
+        "openrouter/free",
     ).strip()
 
     # =====================================================
